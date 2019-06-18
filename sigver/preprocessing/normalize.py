@@ -70,7 +70,8 @@ def normalize_image(img: np.ndarray,
 
     # Binarize the image using OTSU's algorithm. This is used to find the center
     # of mass of the image, and find the threshold to remove background noise
-    threshold = filters.threshold_otsu(img)
+    #threshold = filters.threshold_otsu(img)
+    threshold = 100
 
     # Find the center of mass
     binarized_image = blurred_image > threshold
