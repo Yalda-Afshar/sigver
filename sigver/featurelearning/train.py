@@ -1,3 +1,4 @@
+#%%writefile sigver/featurelearning/train.py
 import argparse
 import pathlib
 from collections import OrderedDict
@@ -84,8 +85,8 @@ def train(base_model: torch.nn.Module,
         val_acc, val_loss, val_forg_acc, val_forg_loss = val_metrics
 
         # Save the best model only on improvement (early stopping)
-        if val_acc >= best_acc:
-            best_acc = val_acc
+        if val_forg_acc >= best_acc:
+            best_acc = val_forg_acc
             best_params = get_parameters(base_model, classification_layer, forg_layer)
             if logdir is not None:
                 torch.save(best_params, logdir / 'model_best.pth')
@@ -197,8 +198,12 @@ def train_epoch(train_loader: torch.utils.data.DataLoader,
                 loss += args.lamb * forg_loss
             else: 
                 # Eq (4) in https://arxiv.org/abs/1705.05787
-                logits = classification_layer(features[yforg == 0])
-                class_loss = F.cross_entropy(logits, y[yforg == 0])
+                try:
+                  logits = classification_layer(features[yforg == 0])
+                  class_loss = F.cross_entropy(logits, y[yforg == 0])
+                except:
+                    print(yforg)
+                    print(y)
 
                 forg_logits = forg_layer(features).squeeze()
                 forg_loss = F.binary_cross_entropy_with_logits(forg_logits, yforg)
@@ -290,6 +295,14 @@ def test(val_loader: torch.utils.data.DataLoader,
                 forg_logits = forg_layer(features).squeeze()
                 forg_loss = F.binary_cross_entropy_with_logits(forg_logits, yforg)
                 forg_pred = forg_logits > 0
+                for i in range(len(forg_pred)):
+                  v = forg_logits[i]
+                  if v <= 0.5:
+                    forg_pred[i] = 0
+                  elif v > 0.5 and v <= 1.5:
+                    forg_pred[i] = 1
+                  else:
+                    forg_pred[i] = 2
                 forg_acc = yforg.long().eq(forg_pred.long()).float().mean()
 
                 val_forg_losses.append(forg_loss.item())
@@ -335,6 +348,8 @@ def main(args):
     print('Initializing Model')
 
     n_classes = len(np.unique(data[1]))
+
+    print('Total classes = '+str(n_classes))
 
     base_model = models.available_models[args.model]().to(device)
     classification_layer = nn.Linear(base_model.feature_space_size, n_classes).to(device)
@@ -425,3 +440,6 @@ if __name__ == '__main__':
     print(arguments)
 
     main(arguments)
+
+
+#%%
