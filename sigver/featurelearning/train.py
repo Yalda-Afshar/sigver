@@ -1,4 +1,3 @@
-#%%writefile sigver/featurelearning/train.py
 import argparse
 import pathlib
 from collections import OrderedDict
@@ -85,8 +84,8 @@ def train(base_model: torch.nn.Module,
         val_acc, val_loss, val_forg_acc, val_forg_loss = val_metrics
 
         # Save the best model only on improvement (early stopping)
-        if val_forg_acc >= best_acc:
-            best_acc = val_forg_acc
+        if val_acc >= best_acc:
+            best_acc = val_acc
             best_params = get_parameters(base_model, classification_layer, forg_layer)
             if logdir is not None:
                 torch.save(best_params, logdir / 'model_best.pth')
@@ -180,7 +179,7 @@ def train_epoch(train_loader: torch.utils.data.DataLoader,
         x, y = batch[0], batch[1]
         x = torch.tensor(x, dtype=torch.float).to(device)
         y = torch.tensor(y, dtype=torch.long).to(device)
-        yforg = torch.tensor(batch[2], dtype=torch.float).to(device)
+        yforg = torch.tensor(batch[2], dtype=torch.long).to(device)
 
         # Forward propagation
         features = base_model(x)
@@ -198,15 +197,12 @@ def train_epoch(train_loader: torch.utils.data.DataLoader,
                 loss += args.lamb * forg_loss
             else: 
                 # Eq (4) in https://arxiv.org/abs/1705.05787
-                try:
-                  logits = classification_layer(features[yforg == 0])
-                  class_loss = F.cross_entropy(logits, y[yforg == 0])
-                except:
-                    print(yforg)
-                    print(y)
+                logits = classification_layer(features[yforg == 0])
+                class_loss = F.cross_entropy(logits, y[yforg == 0])
 
-                forg_logits = forg_layer(features).squeeze()
-                forg_loss = F.binary_cross_entropy_with_logits(forg_logits, yforg)
+
+                forg_logits = forg_layer(features)
+                forg_loss = F.cross_entropy(forg_logits, yforg)
 
                 loss = (1 - args.lamb) * class_loss
                 loss += args.lamb * forg_loss
@@ -281,7 +277,7 @@ def test(val_loader: torch.utils.data.DataLoader,
         x, y, yforg = batch[0], batch[1], batch[2]
         x = torch.tensor(x, dtype=torch.float).to(device)
         y = torch.tensor(y, dtype=torch.long).to(device)
-        yforg = torch.tensor(yforg, dtype=torch.float).to(device)
+        yforg = torch.tensor(yforg, dtype=torch.long).to(device)
 
         with torch.no_grad():
             features = base_model(x)
@@ -292,17 +288,9 @@ def test(val_loader: torch.utils.data.DataLoader,
             acc = y[yforg == 0].eq(pred).float().mean()
 
             if is_forg:
-                forg_logits = forg_layer(features).squeeze()
-                forg_loss = F.binary_cross_entropy_with_logits(forg_logits, yforg)
-                forg_pred = forg_logits > 0
-                for i in range(len(forg_pred)):
-                  v = forg_logits[i]
-                  if v <= 0.5:
-                    forg_pred[i] = 0
-                  elif v > 0.5 and v <= 1.5:
-                    forg_pred[i] = 1
-                  else:
-                    forg_pred[i] = 2
+                forg_logits = forg_layer(features)
+                forg_loss = F.cross_entropy(forg_logits, yforg)
+                forg_pred = forg_logits.argmax(1)
                 forg_acc = yforg.long().eq(forg_pred.long()).float().mean()
 
                 val_forg_losses.append(forg_loss.item())
@@ -314,7 +302,6 @@ def test(val_loader: torch.utils.data.DataLoader,
     val_acc = np.mean(val_accs)
     val_forg_loss = np.mean(val_forg_losses) if len(val_forg_losses) > 0 else np.nan
     val_forg_acc= np.mean(val_forg_accs) if len(val_forg_accs) > 0 else np.nan
-
     return val_acc.item(), val_loss.item(), val_forg_acc.item(), val_forg_loss.item()
 
 
@@ -349,12 +336,10 @@ def main(args):
 
     n_classes = len(np.unique(data[1]))
 
-    print('Total classes = '+str(n_classes))
-
     base_model = models.available_models[args.model]().to(device)
     classification_layer = nn.Linear(base_model.feature_space_size, n_classes).to(device)
     if args.forg:
-        forg_layer = nn.Linear(base_model.feature_space_size, 1).to(device)
+        forg_layer = nn.Linear(base_model.feature_space_size, 3).to(device)
     else:
         forg_layer = nn.Module()  # Stub module with no parameters
 
@@ -440,6 +425,3 @@ if __name__ == '__main__':
     print(arguments)
 
     main(arguments)
-
-
-#%%

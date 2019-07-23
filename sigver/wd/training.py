@@ -52,7 +52,6 @@ def train_wdclassifier_user(training_set: Tuple[np.ndarray, np.ndarray],
 
     model_with_scaler = pipeline.Pipeline([('scaler', preprocessing.StandardScaler(with_mean=False)),
                                            ('classifier', model)])
-
     model_with_scaler.fit(train_x, train_y)
 
     return model_with_scaler

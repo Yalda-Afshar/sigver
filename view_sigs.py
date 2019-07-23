@@ -18,10 +18,10 @@ if __name__ == "__main__":
     print(y[i])
     print(yforg[i])
 
-    for i in range(170):
-        for j in range(242):
-            bit = imgData[i][j] 
-            if bit not in [0, 1]:
-                print(bit)
+#    for i in range(150):
+#        for j in range(220):
+#            bit = imgData[i][j] 
+#            if bit not in [0, 1]:
+#                print(bit)
     
     

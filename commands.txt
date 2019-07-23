@@ -1,5 +1,6 @@
 python3 -m sigver.preprocessing.process_dataset --dataset persian --path UTSig_Crop  \
-  --save-path persian_1_115.npz
+  --image-size 150 220 \
+  --save-path persian_1_115_new_150-220.npz
 
 python3 -m sigver.featurelearning.train --model signet --dataset-path persian_1_115_150-220.npz \
   --users 1 100 --epochs 60 --logdir signet_with_forgery_150-220 --visdomport 8097 \

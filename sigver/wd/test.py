@@ -7,7 +7,6 @@ import sigver.wd.training as training
 import numpy as np
 import pickle
 
-
 def main(args):
     exp_users = range(*args.exp_users)
     dev_users = range(*args.dev_users)
@@ -21,7 +20,7 @@ def main(args):
 
     print('Using device: {}'.format(device))
 
-    base_model = models.available_models[args.model]().to(device).eval()
+    base_model = models.available_models[args.model]().to(device)#.eval()
 
     base_model.load_state_dict(state_dict)
 
