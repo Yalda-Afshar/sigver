@@ -3,8 +3,8 @@ from sigver.datasets.base import IterableDataset
 from skimage.io import imread
 from skimage import img_as_ubyte
 
-MAX_X = 2000
-MAX_Y = 2000
+MAX_X = 3000
+MAX_Y = 3000
 
 class PersianDataset(IterableDataset):
     """ Helper class to load the brazilian PUC-PR dataset
